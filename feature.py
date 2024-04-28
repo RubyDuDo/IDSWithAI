@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 def read_data( data_type="train" ):
     if data_type == "train" :
@@ -11,9 +12,12 @@ def read_data( data_type="train" ):
 
     return unsw
 
-def __factor( dataset, col_name ):
-    labels, unique = pd.factorize( dataset[col_name])
-    dataset[col_name] = labels
+def __factor( train ,  test, col_name ):
+    labels, unique = pd.factorize( train[col_name])
+    train[col_name] = labels
+
+    test_labels = pd.Series([unique.tolist().index(i) if i in unique else -1 for i in test[col_name]])
+    test[col_name] = test_labels
     return labels, unique
 
 # drop useless features
@@ -21,12 +25,23 @@ def feature_del(dataset):
     dataset.drop(["attack_cat","id"], axis = 1, inplace = True)
 
 # simply change string feature to numbers, using label
-def feature_factor( dataset ):
-    __factor( dataset, "proto" )
-    __factor( dataset, "service")
-    __factor( dataset, "state")
+def feature_factor( train,  test ):
+    __factor( train, test, "proto" )
+    __factor( train, test, "service")
+    __factor( train, test, "state")
+
+def feature_standard( train, test ):
+    scaler = StandardScaler()
+    train = scaler.fit_transform(train)
+    test = scaler.transform( test )
+    return train, test
 
 # simple feature deal 
-def feature_simple( dataset ):
-    feature_del( dataset )
-    feature_factor(dataset)
+def feature_simple( train, test ):
+    feature_del( train )
+    feature_del( test )
+    feature_factor(train, test)
+    train, test = feature_standard( train, test )
+    return train, test
+
+
