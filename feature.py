@@ -7,6 +7,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from scipy.stats import skew
 from sklearn.preprocessing import FunctionTransformer
+from sklearn.tree import DecisionTreeClassifier
+
+import algorithm as al
 
 
 def read_data( data_type="train" ):
@@ -104,7 +107,8 @@ def feature_column_deal( df , preprocessor = None ):
 
 def is_skew( df, col ):
     skewness = skew( df[col] )
-    if skewness > 0 :
+    SKEW_LIMIT = 4
+    if skewness > SKEW_LIMIT :
         return True
     
 def feature_log( train, test ):
@@ -119,3 +123,30 @@ def feature_log( train, test ):
     test[skew_features] = np.log(test[skew_features] + 1 )
 
     return train, test 
+
+
+def feature_reduce_desiciontree( X_train, Y_train, X_test, Y_test ):
+    clf = DecisionTreeClassifier(random_state=42)
+    al.train_and_evaluate(clf, X_train, Y_train, X_test, Y_test )
+
+    #通过决策树，观察哪些字段对决策的重要性更大
+    # 获取特征重要性并创建DataFrame
+    feature_importances = clf.feature_importances_
+    feature_names = X_train.columns
+    features_df = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': feature_importances
+    })
+
+    # 按重要性排序
+    features_df = features_df.sort_values(by='Importance', ascending=False)
+
+    # 通过决策树，找到没啥影响的列，删掉他们
+    features_with_zero_importance = [feature_names[i] for i, importance in enumerate(feature_importances) if importance == 0]
+    print( features_with_zero_importance)
+
+    X_train.drop( features_with_zero_importance, axis = 1, inplace = True )
+    X_test.drop( features_with_zero_importance, axis = 1, inplace = True )
+
+    print(X_train.shape)
+    print(X_test.shape)
