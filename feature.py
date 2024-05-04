@@ -5,6 +5,8 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from scipy.stats import skew
+from sklearn.preprocessing import FunctionTransformer
 
 
 def read_data( data_type="train" ):
@@ -50,7 +52,9 @@ def feature_simple( train, test ):
     train, test = feature_standard( train, test )
     return train, test
 
-def feature_onehot_standard( train, test ):
+def feature_current( train, test ):
+    train, test = feature_log( train, test )
+    print(train)
     train, processor  = feature_column_deal( train)
     test, processor = feature_column_deal( test, processor )
     return train, test
@@ -63,11 +67,15 @@ def convert_back_to_PD( df_transformed, preprocessor ):
 
     # 合并所有特征名
     all_feature_names = num_feature_names.tolist() + ohe_feature_names.tolist()
+
+    print( df_transformed.shape)
+    print( len(all_feature_names))
     
     print( "all_feature_names", len(all_feature_names) )
     df_new = pd.DataFrame(data=df_transformed, columns=all_feature_names)
     print(df_new)
     return df_new
+
 
 # lable(one hot) + num(standardscaler)
 def feature_column_deal( df , preprocessor = None ):
@@ -88,7 +96,26 @@ def feature_column_deal( df , preprocessor = None ):
     else:
         df_transformed = preprocessor.transform(df)
 
+    
+
     new_df = convert_back_to_PD( df_transformed, preprocessor )
     return new_df, preprocessor
 
 
+def is_skew( df, col ):
+    skewness = skew( df[col] )
+    if skewness > 0 :
+        return True
+    
+def feature_log( train, test ):
+    skew_features = []
+    numeric_features = train.select_dtypes( np.number ).columns
+    for col in numeric_features:
+        if is_skew( train, col ):
+            skew_features.append( col )
+
+    # 对指定列进行对数操作（原地修改）
+    train[skew_features] = np.log(train[skew_features] + 1  )
+    test[skew_features] = np.log(test[skew_features] + 1 )
+
+    return train, test 
